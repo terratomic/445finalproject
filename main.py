@@ -3,6 +3,7 @@ from tkFileDialog import askopenfilename, asksaveasfile
 from PIL import ImageTk, Image, ImageDraw, ImageCms
 from heapq import *
 from pprint import pprint
+import sys
 import time
 import numpy as np
 import matplotlib.pyplot as plt
@@ -14,8 +15,8 @@ from scipy.signal import convolve2d
 #plt.switch_backend('Qt4Agg')
 np.set_printoptions(threshold=np.nan)
 
-WIDTH = 800
-HEIGHT = 600
+WIDTH = 500
+HEIGHT = 300
 SEED_WIDTH = 10
 dx = [0, 0, +1, -1, +1, +1, -1, -1]
 dy = [+1, -1, 0, 0, -1, +1, -1, +1]
@@ -110,6 +111,7 @@ class ImageEditor:
         self.f_D = np.zeros((HEIGHT, WIDTH, DIRS))
         self.scissor_buf = None
         self.scissor_draw = None
+        self.contour = None
 
     def __init__(self):
         self.images = {}
@@ -221,6 +223,16 @@ class ImageEditor:
         self.active_button.config(relief=RAISED)
         self.active_button = None
 
+    def flood(self, boundary, x, y):
+        dx = [0, 0, 1, -1]
+        dy = [1, -1, 0, 0]
+        print x, y
+        if 0 <= x < WIDTH and 0 <= y < HEIGHT and not self.flood_visited[y, x] and not boundary[y, x]:
+            self.flood_visited[y, x] = 1
+            self.masked_buf[y, x, :] = np.array(self.buf.getpixel((x, y)))
+            for i in xrange(len(dx)):
+                self.flood(boundary, x + dx[i], y + dy[i])
+
     def down(self, event):
         self.prev_x, self.prev_y = None, None
         self.pressed = True
@@ -231,7 +243,14 @@ class ImageEditor:
             self.origin_y = event.y
             self.looking = False
         elif self.active_button == self.buttonsdict["scissors"]:
-            if not (self.seed_x == None or self.seed_y == None):
+            if not(self.contour is None):
+                # doesn't handle when the click lands exactly on the contour
+                self.masked_buf = np.array(self.buf)
+                self.masked_buf[:,:,:] = 0
+                self.flood_visited = np.zeros((HEIGHT, WIDTH), dtype=np.int_)
+                self.flood(self.contour, event.x, event.y)
+                self.drawInNewWindow(Image.fromarray(self.masked_buf), "masked")
+            elif not (self.seed_x == None or self.seed_y == None):
                 self.editor_buf = self.scissor_buf
                 self.editor_draw = self.scissor_draw
             else:
@@ -259,7 +278,7 @@ class ImageEditor:
                 Iy2 = Iy2 / (G + 0.000001)
 
                 # p current point, q neighboring point, (dx, dy) = (px - qx, py - qy)
-                f_D = np.zeros((HEIGHT, WIDTH, DIRS))
+                self.f_D = np.zeros((HEIGHT, WIDTH, DIRS))
                 for i in range(DIRS):
                     mask = ((Iy2*dx[i] - Ix2*dy[i]) >= 0)
                     Ix2_ = np.roll(Ix2 , -dx[i], axis=1)
@@ -276,7 +295,10 @@ class ImageEditor:
                             (mask * (Iy2_*dx[i] - Ix2_*dy[i]) + (1 - mask) * (-Iy2_*dx[i] + Ix2_*dy[i]))
                         )
                     ) / (3/2 * np.pi)
-                    self.f_D[np.isnan(f_D)] = 100.
+                    self.f_D[np.isnan(self.f_D)] = 255
+
+                plt.imshow(self.f_G, cmap='gray');
+                plt.show()
                 
             self.seed_x, self.seed_y = event.x, event.y
 
@@ -288,6 +310,7 @@ class ImageEditor:
 
             self.seeds.append((self.seed_x, self.seed_y, self.path))
             if over_seed != -1: # closed the loop
+                self.contour = np.zeros((HEIGHT, WIDTH), dtype=np.int_)
                 print "closed the loop"
                 #boundary = np.zeros((HEIGHT, WIDTH), dtype=np.int_) 
                 #path = []
@@ -298,6 +321,7 @@ class ImageEditor:
                         editor_arr[p[1], p[0], 0] = 255
                         editor_arr[p[1], p[0], 1] = 0
                         editor_arr[p[1], p[0], 2] = 0
+                        self.contour[p[1], p[0]] = 1
                     #path.extend(seed[2])
                 self.reset_canvas()
                 self.render(Image.fromarray(editor_arr))
@@ -306,10 +330,6 @@ class ImageEditor:
                 self.path_x, self.path_y = None, None
                 return
 
-            """
-            plt.imshow(self.f_D, cmap='gray');
-            plt.show()
-            """
 
             self.dijkstras(self.f_D, self.f_G) 
             self.editor_draw.ellipse(
@@ -351,7 +371,7 @@ class ImageEditor:
             0 <= x < WIDTH and 0 <= y < HEIGHT
         ):
             scissor_arr = np.array(self.editor_buf)
-            print scissor_arr.shape
+            #print scissor_arr.shape
 
             over_seed = -1
             for i, seed in enumerate(self.seeds):
@@ -620,4 +640,5 @@ class ImageEditor:
         self.draw = ImageDraw.Draw(self.buf)
 
 if __name__ == "__main__":
+    sys.setrecursionlimit(WIDTH*HEIGHT)
     ImageEditor()
