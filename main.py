@@ -11,6 +11,9 @@ from scipy.cluster.vq import vq, kmeans, whiten
 plt.switch_backend('Qt4Agg')
 np.set_printoptions(threshold=np.nan)
 
+WIDTH = 500
+HEIGHT = 500
+
 def rgb2lab ( inputColor ) :
 
    num = 0
@@ -96,6 +99,7 @@ class ImageEditor:
 
     def __init__(self):
 
+
         self.images = {}
         self.canvasimages = {}
         self.canvases = {}
@@ -124,7 +128,7 @@ class ImageEditor:
         self.add_button("extract", self.extract)
         self.add_button("clear", self.clear)
 
-        self.canvas = Canvas(self.root, bg="white", width=500, height=300)
+        self.canvas = Canvas(self.root, bg="white", width=WIDTH, height=HEIGHT)
         self.canvas.grid(row=1, column=0, columnspan=len(self.buttons))
         #self.canvas.pack()
 
@@ -239,6 +243,14 @@ class ImageEditor:
 
         if (groundType not in self.ground):
             self.ground[groundType] = []
+        # if(groundType == "known_foreground"):
+        #
+        #     old = self.ground["known_background"][0]
+        #     new_background = np.array(self.buf)
+        #     new_background[self.origin_y:self.end_y, self.origin_x:self.end_x] = 255
+        #     # print new_background[self.origin_y:self.end_y, self.origin_x:self.end_x]
+        #     new_background = new_background[old.y1:old.y2, old.x1:old.x2]
+        #     self.ground["known_background"][0].subimage = new_background
 
         self.ground[groundType].append(sub)
 
@@ -258,20 +270,28 @@ class ImageEditor:
         background = np.array(self.ground["known_background"][0].subimage)
         l,a,b, total, original = self.convertToLAB(background)
         # print total
-
+        self.f = False
         b_freqs = self.getFrequencies(total)
-        # self.plot3dhist(l,a,b,1)
+        ##### self.plot3dhist(l,a,b,1)
 
-        foreground = np.array(self.ground["known_foreground"][0].subimage)
-        l,a,b, total, original = self.convertToLAB(foreground)
+        # foreground = np.array(self.ground["known_foreground"][0].subimage)
+        # l,a,b, total, original = self.convertToLAB(foreground)
 
         total = []
+        lf = []
+        af = []
+        bf = []
         for val in self.ground["known_foreground"]:
-            interest = np.array(val.subimage)
-            l,a,b,temp,original = self.convertToLAB(interest)
+            foreground = np.array(val.subimage)
+            l,a,b,temp,original = self.convertToLAB(foreground)
             total+=temp
+            lf += l
+            af += a
+            bf += b
 
+        ####self.plot3dhist(lf,af,bf,2)
 
+        self.f = True
         f_freqs = self.getFrequencies(total)
 
         interest = np.array(self.ground["interest_region"][0].subimage)
@@ -280,7 +300,7 @@ class ImageEditor:
 
 
         original = np.array(original)
-        # self.plot3dhist(l,a,b,2)
+        # self.plot3dhist(l,a,b,3)
 
 
 
@@ -293,6 +313,10 @@ class ImageEditor:
 
         superoriginal = np.empty(original.shape)
 
+        foreground = self.ground["known_foreground"]
+        # background =
+        x_start, y_start = 0,0
+
         for i in range(len(original)):
             for j in range(len(original[i])):
                 x,y,z = original[i][j]
@@ -301,9 +325,12 @@ class ImageEditor:
                 z = z/100
                 ff = 0.0
                 fb = 0.0
+
                 try:
                     if(z in f_freqs[x][y]):
-                        ff = f_freqs[x][y][z]*1.5
+                        ff = f_freqs[x][y][z]#*1.5
+                        x_start = i
+                        y_start = j
                 except KeyError:
                     # print "KEY ERROR"
                     ff= 0.0
@@ -319,16 +346,131 @@ class ImageEditor:
                     superoriginal[i,j] = [0,0,0]
 
 
-        self.drawTriMap()
 
         img = Image.fromarray(superoriginal.astype(np.uint8),mode= "RGB")
         self.drawInNewWindow(img, "foreground hopefully")
+
+        self.drawTriMap()
+        superoriginal2 = self.breadthFirstSearch(superoriginal, x_start, y_start)
+        img2 = Image.fromarray(superoriginal2.astype(np.uint8),mode= "RGB")
+        self.drawInNewWindow(img2, "foreground hopefully2")
+
+
 
         self.active_button.config(relief=RAISED)
         self.active_button = None
 
         self.drawInNewWindow(self.buf, "current")
 
+
+    def breadthFirstSearch(self, array, startx, starty):
+
+        trimap = self.trimap
+        radius = 40
+        percentage = .50
+
+        trial = np.array(array)
+        trial[:,:]= [0,0,0]
+
+        foreground = self.ground["known_foreground"][0]
+        # startx, starty = foreground.x1, foreground.y1
+
+        points = []
+
+        points.append((startx+1, starty+1))
+
+        points2 = []
+        points2.append((startx-1, starty+1))
+        points2.append((startx+1, starty-1))
+        points2.append((startx-1, starty-1))
+
+        xmax = len(array)
+        ymax = len(array[0])
+
+        di = {}
+
+        while(points):
+
+            x,y = points.pop(0)
+            if((x,y) in di):
+                continue
+            di[(x,y)] = 0
+            if(x < 0 or y < 0 or x >= xmax or y>=ymax):
+                continue
+            if(not self.attached(x,y,array[x][y])):
+                trial[x][y] = [0,0,0]
+                # points.append((x+1, y-1))
+                continue
+            # else:
+            #     i = 1
+            #     j = 1
+            #     tolerance = .5
+            #     count = 0
+            #
+            #
+            #     if(not self.isBlack(array[x+i][y])):
+            #         count += 1
+            #     if(not self.isBlack(array[x-i][y])):
+            #         count += 1
+            #     if(not self.isBlack(array[x][y+j])):
+            #         count += 1
+            #     if(not self.isBlack(array[x][y-j])):
+            #         count += 1
+            #     if(not self.isBlack(array[x+i][y+j])):
+            #         count += 1
+            #     if(not self.isBlack(array[x-i][y-j])):
+            #         count += 1
+            #     if(not self.isBlack(array[x-i][y+j])):
+            #         count += 1
+            #     if(not self.isBlack(array[x+i][y-j])):
+            #         count += 1
+            #
+            #     if((count / 8)< tolerance):
+            #         print count / 8
+            #         trial[x][y] = [0,0,0]
+            #         print trial[x][y]
+            #         continue
+            trial[x][y] = array[x][y]
+            # print trial[x][y]
+            # print array[x][y]
+            if(not points and points2):
+                points.append(points2.pop())
+
+            points.append((x+1, y-1))
+            points.append((x+1, y))
+            points.append((x+1, y+1))
+            points.append((x, y+1))
+            points.append((x, y-1))
+            points.append((x-1, y+1))
+            points.append((x-1, y))
+            points.append((x-1, y-1))
+            # print "hi"
+        return trial
+
+
+    def attached(self, x, y, val):
+
+        # print "TRIMAP"
+        # print self.trimap[x][y]
+        print val
+
+        # if(self.trimap[x][y] == 0.0 ):
+        #     print "trimap"
+        #     return False
+        # if(self.trimap[x][y] == 1.0 ):
+        #     print "trimap"
+        #     return True
+        if(self.isBlack(val)):
+
+            # print"isBlack"
+            return False
+
+        # print "true"
+        # print val
+        return True
+
+    def isBlack(self,val):
+        return (val[0] == 0 and val[1] == 0 and val[2] == 0 )
 
 
 
@@ -353,6 +495,9 @@ class ImageEditor:
                 vals[x][y] = {}
             if(z not in vals[x][y]):
                 vals[x][y][z] = 0
+            if(self.f):
+                vals[x][y][z] = 1
+                continue
             vals[x][y][z] += (1.0/number)
 
         return vals
@@ -416,7 +561,7 @@ class ImageEditor:
 
     def drawInNewWindow(self, img, imageName):
         self.master = Toplevel()
-        canvas = Canvas(self.master, bg="white", width=500, height=300)
+        canvas = Canvas(self.master, bg="white", width=WIDTH, height=HEIGHT)
 
         canvas.pack()
 
@@ -458,4 +603,10 @@ class ImageEditor:
 
 
 if __name__ == "__main__":
+
+    if len(sys.argv) > 1:
+        print sys.argv
+        img = Image.open(sys.argv[1])
+        WIDTH, HEIGHT = img.size
+
     ImageEditor()
