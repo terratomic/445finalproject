@@ -95,7 +95,7 @@ class ImageEditor:
                 self.active_button.config(relief=RAISED)
             b.config(relief=SUNKEN)
             self.active_button = b
-            self.reset_canvas()
+            #self.reset_canvas()
             button_callback()
         b = Button(self.root, text=button_text, command=wrap_callback)
         b.grid(row = 0, column = len(self.buttons))
@@ -241,7 +241,7 @@ class ImageEditor:
         self.pressed = True
         if self.active_button == self.buttonsdict["paint"]:
             self.prev_x, self.prev_y = None, None
-        elif self.active_button == self.buttonsdict["select"]and self.looking:
+        elif self.active_button == self.buttonsdict["select"]:
             self.origin_x = event.x
             self.origin_y = event.y
             self.looking = False
@@ -423,6 +423,7 @@ class ImageEditor:
     def scissor(self):
         print "scissor"
         self.init_scissors()
+        self.reset_canvas()
         pass
 
     def select(self):
