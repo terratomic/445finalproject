@@ -11,7 +11,7 @@ import pylab
 from scipy.cluster.vq import vq, kmeans, whiten
 from scipy.signal import convolve2d
 
-plt.switch_backend('Qt4Agg')
+#plt.switch_backend('Qt4Agg')
 np.set_printoptions(threshold=np.nan)
 
 WIDTH = 800
@@ -101,6 +101,16 @@ class ImageEditor:
         self.buttons.append(b)
         self.buttonsdict[button_text] = b
 
+    def init_scissors(self):
+        self.seeds = []
+        self.path = []
+        self.seed_x, self.seed_y = None, None
+        self.path_x, self.path_y = None, None
+        self.f_G = np.zeros((HEIGHT, WIDTH))
+        self.f_D = np.zeros((HEIGHT, WIDTH, DIRS))
+        self.scissor_buf = None
+        self.scissor_draw = None
+
     def __init__(self):
         self.images = {}
         self.canvasimages = {}
@@ -146,15 +156,7 @@ class ImageEditor:
         self.editor_buf = Image.new("RGB", (WIDTH, HEIGHT), (255, 255, 255)) # white
         self.editor_draw = ImageDraw.Draw(self.editor_buf)
 
-        # Scissor vars
-        self.seeds = []
-        self.path = []
-        self.seed_x, self.seed_y = None, None
-        self.path_x, self.path_y = None, None
-        self.f_G = np.zeros((HEIGHT, WIDTH))
-        self.f_D = np.zeros((HEIGHT, WIDTH, DIRS))
-
-        # Paint vars
+       # Paint vars
         self.prev_x, self.prev_y = None, None
         self.pressed = False
 
@@ -304,6 +306,11 @@ class ImageEditor:
                 self.path_x, self.path_y = None, None
                 return
 
+            """
+            plt.imshow(self.f_D, cmap='gray');
+            plt.show()
+            """
+
             self.dijkstras(self.f_D, self.f_G) 
             self.editor_draw.ellipse(
                 [self.seed_x, self.seed_y, self.seed_x + SEED_WIDTH, self.seed_y + SEED_WIDTH],
@@ -334,14 +341,17 @@ class ImageEditor:
             self.canvas.delete("rect")
 
             self.canvas.create_rectangle(self.origin_x, self.origin_y, self.end_x, self.end_y, tags="rect")
+
     def on_motion(self, event):
         x, y = event.x, event.y
         #print x, y, np.array(self.buf).shape
         if (
-            self.active_button == self.buttons[2] and
-            not (self.seed_x == None or self.seed_y == None)
+            self.active_button == self.buttonsdict["scissors"] and
+            not (self.seed_x == None or self.seed_y == None) and
+            0 <= x < WIDTH and 0 <= y < HEIGHT
         ):
             scissor_arr = np.array(self.editor_buf)
+            print scissor_arr.shape
 
             over_seed = -1
             for i, seed in enumerate(self.seeds):
@@ -389,6 +399,7 @@ class ImageEditor:
 
     def scissor(self):
         print "scissor"
+        self.init_scissors()
         pass
 
     def select(self):
@@ -570,7 +581,7 @@ class ImageEditor:
 
     def drawInNewWindow(self, img, imageName):
         self.master = Toplevel()
-        canvas = Canvas(self.master, bg="white", width=500, height=300)
+        canvas = Canvas(self.master, bg="white", width=WIDTH, height=HEIGHT)
 
         canvas.pack()
 
