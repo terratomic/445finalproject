@@ -16,7 +16,7 @@ from scipy.signal import convolve2d
 np.set_printoptions(threshold=np.nan)
 
 WIDTH = 500
-HEIGHT = 300
+HEIGHT = 500
 SEED_WIDTH = 10
 dx = [0, 0, +1, -1, +1, +1, -1, -1]
 dy = [+1, -1, 0, 0, -1, +1, -1, +1]
@@ -113,7 +113,7 @@ class ImageEditor:
         self.scissor_draw = None
         self.contour = None
 
-    def __init__(self):
+    def __init__(self, init_img):
         self.images = {}
         self.canvasimages = {}
         self.canvases = {}
@@ -145,7 +145,10 @@ class ImageEditor:
         self.canvas.grid(row=1, column=0, columnspan=len(self.buttons))
         #self.canvas.pack()
 
-        img = Image.open("tiger.jpg")
+        if init_img:
+            img = init_img
+        else:
+            img = Image.open("tiger.jpg")
         photo_img = ImageTk.PhotoImage(img)
 
         self.buf = Image.new("RGB", (WIDTH, HEIGHT), (255, 255, 255)) # white
@@ -641,4 +644,10 @@ class ImageEditor:
 
 if __name__ == "__main__":
     sys.setrecursionlimit(WIDTH*HEIGHT)
-    ImageEditor()
+        
+    img = None
+    if len(sys.argv) > 1:
+        print sys.argv
+        img = Image.open(sys.argv[1])
+        WIDTH, HEIGHT = img.size
+    ImageEditor(img)
