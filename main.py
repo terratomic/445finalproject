@@ -17,10 +17,6 @@ np.set_printoptions(threshold=np.nan)
 
 WIDTH = 500
 HEIGHT = 500
-<<<<<<< HEAD
-
-def rgb2lab ( inputColor ) :
-=======
 SEED_WIDTH = 10
 dx = [0, 0, +1, -1, +1, +1, -1, -1]
 dy = [+1, -1, 0, 0, -1, +1, -1, +1]
@@ -28,7 +24,6 @@ w = [1/np.sqrt(3 - dx[i]**2 - dy[i]**2) for i in range(len(dx))]
 DIRS = len(dx)
 OMEGA_D = 0.2
 OMEGA_G = 0.8
->>>>>>> f162a890141137171a862141bbe84d9df5db0c8a
 
 def rgb2lab ( inputColor ) :
    num = 0
@@ -107,11 +102,6 @@ class ImageEditor:
         self.buttons.append(b)
         self.buttonsdict[button_text] = b
 
-<<<<<<< HEAD
-    def __init__(self):
-
-
-=======
     def init_scissors(self):
         self.seeds = []
         self.path = []
@@ -124,7 +114,6 @@ class ImageEditor:
         self.contour = None
 
     def __init__(self, init_img):
->>>>>>> f162a890141137171a862141bbe84d9df5db0c8a
         self.images = {}
         self.canvasimages = {}
         self.canvases = {}
@@ -569,8 +558,6 @@ class ImageEditor:
 
         self.drawInNewWindow(self.buf, "current")
 
-<<<<<<< HEAD
-
     def breadthFirstSearch(self, array, startx, starty):
 
         trimap = self.trimap
@@ -681,11 +668,6 @@ class ImageEditor:
         return (val[0] == 0 and val[1] == 0 and val[2] == 0 )
 
 
-
-
-
-=======
->>>>>>> f162a890141137171a862141bbe84d9df5db0c8a
     def getFrequencies(self,array):
         total = np.array(array)
         print np.shape(array)
@@ -803,20 +785,11 @@ class ImageEditor:
         self.draw = ImageDraw.Draw(self.buf)
 
 if __name__ == "__main__":
-<<<<<<< HEAD
-
-=======
     sys.setrecursionlimit(WIDTH*HEIGHT)
         
     img = None
->>>>>>> f162a890141137171a862141bbe84d9df5db0c8a
     if len(sys.argv) > 1:
         print sys.argv
         img = Image.open(sys.argv[1])
         WIDTH, HEIGHT = img.size
-<<<<<<< HEAD
-
-    ImageEditor()
-=======
     ImageEditor(img)
->>>>>>> f162a890141137171a862141bbe84d9df5db0c8a
